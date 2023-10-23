@@ -1,66 +1,45 @@
-## Foundry
+# Boston University Blockchain Club DAO
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+**Author:** Wes Jorgensen ([@Wezabis on Twitter](https://twitter.com/Wezabis))
 
-Foundry consists of:
+This contract serves as a simple DAO for the Boston University Blockchain Club.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Contract Functions
 
-## Documentation
+### Modifiers:
+- **onlyOwner**: Ensures that the caller is the owner of the contract.
+- **onlyMember**: Ensures that the caller is a member of the DAO.
+- **onlyVP**: Ensures that the caller is a VP of the DAO.
+- **onlyPresident**: Ensures that the caller is the president of the DAO.
 
-https://book.getfoundry.sh/
+### Core Functions:
 
-## Usage
+- **constructor(address _president)**: Sets the owner and president of the DAO.
+  
+- **addMember(address _member)**: Adds a member to the DAO.
+  
+- **addVP(address _vp)**: Adds a VP to the DAO.
+  
+- **newPresident(address _president)**: Appoints a new president to the DAO and removes the old president.
+  
+- **removeMember(address _member)**: Removes a member from the DAO.
+  
+- **addProposal(string calldata _proposal)**: Allows a member to add a proposal.
+  
+- **vote(uint _proposal, boolean _vote)**: Allows a member to vote on a proposal. If a proposal receives more than half of the total votes in favor, it passes. If it receives more than half of the total votes against, it fails.
+  
+- **getProposal(uint _proposal)**: Returns the proposal and its votes (both in favor and against).
+  
+- **airdrop(address[] list)**: Airdrops governance tokens to a list of new members.
+  
+- **vpAirdrop(address[] list)**: Airdrops governance tokens for VPs to a list of new VPs.
 
-### Build
+### Events:
 
-```shell
-$ forge build
-```
+- **NewProposal**: Emitted when a new proposal is added.
+  
+- **proposalPassed**: Emitted when a proposal passes.
+  
+- **proposalFailed**: Emitted when a proposal fails.
 
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+---
