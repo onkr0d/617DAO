@@ -13,15 +13,34 @@ contract BUBDAO {
     mapping (address => uint) private balance;
     address private president;
     uint private totalTokens;
-    uint totalMembers = 0;
+
+    uint8 constant TOTAL_PRESIDENT_TOKENS = 3;
+    uint8 constant TOTAL_VP_TOKENS = 2;
+    uint8 constant TOTAL_MEMBER_TOKENS = 1;
 
     error Unauthorized();
+    error MeetingNotOpen();
+    error MeetingIsAlreadyOpen();
+    error alreadyCheckedIn();
     
     struct Proposal {
         string proposal;
         uint votesYa;
         uint votesNay;
     }
+
+    struct Meeting {
+        uint date;
+        string topic;
+        address[] attendees;
+        bool open;
+    }
+
+    Meeting private currentMeeting;
+    Meeting[] private pastMeetings;
+
+    mapping (address => uint) private notYetMembers;
+    uint8 constant MEETINGS_REQUIRED_TO_JOIN = 3;
 
     Proposal[] public proposals;
 
@@ -61,33 +80,58 @@ contract BUBDAO {
     constructor(address _president) {
         owner = msg.sender;
         president = _president;
-        ++totalMembers;
+        totalTokens += TOTAL_PRESIDENT_TOKENS;
     }
+
+    //All adding and removing members functions
 
     //@notice adds members to DAO
     function addMember(address _member) public onlyOwner {
-        balance[_member] = 1;
-        ++totalMembers;
+        balance[_member] = TOTAL_MEMBER_TOKENS;
+        totalTokens += TOTAL_MEMBER_TOKENS;
     }
 
     //@notice adds VP to DAO
     function addVP(address _vp) public onlyOwner {
         require(balance[_vp] == 1);
-        balance[_vp] = 2;
+        balance[_vp] = TOTAL_VP_TOKENS;
+        totalTokens += TOTAL_VP_TOKENS;
     }
 
     //@notice adds President to DAO and removes old president
     function newPresident(address _president) public onlyPresident {
-        balance[_president] = 3;
+        balance[_president] = TOTAL_PRESIDENT_TOKENS;
         balance[president] = 0;
         president = _president;
+    }
+
+    //@notice airdrops governance tokens to a list of new members
+    function airdrop(address[] calldata list) public onlyOwner {
+        for (uint i = 0; i < list.length; ++i) {
+            balance[list[i]] = 1;
+        }
+    }
+
+    //@notice airdrops number tokens for VP to a list of new VPs
+    function vpAirdrop(address[] calldata list) public onlyOwner {
+        for (uint i = 0; i < list.length; ++i) {
+            balance[list[i]] = 2;
+        }
     }
 
     //@notice removes members from DAO
     function removeMember(address _member) public onlyOwner {
         balance[_member] = 0;
-        --totalMembers;
+        totalTokens -= TOTAL_MEMBER_TOKENS;
     }
+
+    function removeVP(address _vp) public onlyOwner {
+        balance[_vp] = 0;
+        totalTokens -= TOTAL_VP_TOKENS;
+    }
+
+
+    //Proposals and voting
 
    function addProposal(string calldata _proposal) public onlyMember {
         proposals.push(Proposal(_proposal, 0, 0));
@@ -113,27 +157,48 @@ contract BUBDAO {
         }
     }
 
-    //@notice returns the proposal and votes for a given proposal
-    //@return proposal and votes ya and nay
-    function getProposal(uint _proposal) public view returns (string memory, uint, uint) {
-        return (proposals[_proposal].proposal, proposals[_proposal].votesYa, proposals[_proposal].votesNay);
-    }
 
-    //@notice airdrops governance tokens to a list of new members
-    function airdrop(address[] calldata list) public onlyOwner {
-        for (uint i = 0; i < list.length; ++i) {
-            balance[list[i]] = 1;
+    //Check-in functions
+
+    function newMeeting(string calldata topic) public onlyPresident {
+        if(currentMeeting.open){
+            revert MeetingIsAlreadyOpen();
         }
+        
+        address[] memory attendees;
+        currentMeeting = Meeting(block.timestamp, topic, attendees, true);
     }
 
-    //@notice airdrops number tokens for VP to a list of new VPs
-    function vpAirdrop(address[] calldata list) public onlyOwner {
-        for (uint i = 0; i < list.length; ++i) {
-            balance[list[i]] = 2;
+    function checkIn() public {
+        if(!currentMeeting.open){
+            revert MeetingNotOpen();
         }
+        
+        //Parse through current meeting attendees to see if address has already checked in
+        if(currentMeeting.attendees.length > 0){
+            for(uint i = 0; i < currentMeeting.attendees.length; i++){
+                if(currentMeeting.attendees[i] == msg.sender){
+                    revert alreadyCheckedIn();
+                }
+            }
+        }
+
+        if(balance[msg.sender] < 1){
+            notYetMembers[msg.sender] += 1;
+
+            if(notYetMembers[msg.sender] >= MEETINGS_REQUIRED_TO_JOIN){
+                addMember(msg.sender);
+                delete notYetMembers[msg.sender];
+            }
+        }
+
+        currentMeeting.attendees.push(msg.sender);
     }
 
-
+    function closeMeeting() public onlyPresident {
+        currentMeeting.open = false;
+        pastMeetings.push(currentMeeting);
+    }
 
 
 }
