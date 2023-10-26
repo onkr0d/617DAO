@@ -2,44 +2,24 @@
 
 **Author:** Wes Jorgensen ([@Wezabis on Twitter](https://twitter.com/Wezabis))
 
-This contract serves as a simple DAO for the Boston University Blockchain Club.
+## 617DAO
 
-## Contract Functions
+Meet 617DAO, the central governance tool for the BU Blockchain Association. As a decentralized autonomous organization, 617DAO showcases our commitment to open decision-making and club growth. Through this model, every BU Blockchain Association member gets the chance to play a role in determining the club's direction. Our clear proposal system allows members to suggest new ideas, and our voting system ensures that the club's decisions truly represent our members' wishes. This modern approach doesn't just drive the club's ongoing development; it also positions us as a leader in the world of blockchain community activity and fresh thinking.
 
-### Modifiers:
-- **onlyOwner**: Ensures that the caller is the owner of the contract.
-- **onlyMember**: Ensures that the caller is a member of the DAO.
-- **onlyVP**: Ensures that the caller is a VP of the DAO.
-- **onlyPresident**: Ensures that the caller is the president of the DAO.
+**Structure:**
 
-### Core Functions:
+617DAO has two main parts:
 
-- **constructor(address _president)**: Sets the owner and president of the DAO.
-  
-- **addMember(address _member)**: Adds a member to the DAO.
-  
-- **addVP(address _vp)**: Adds a VP to the DAO.
-  
-- **newPresident(address _president)**: Appoints a new president to the DAO and removes the old president.
-  
-- **removeMember(address _member)**: Removes a member from the DAO.
-  
-- **addProposal(string calldata _proposal)**: Allows a member to add a proposal.
-  
-- **vote(uint _proposal, boolean _vote)**: Allows a member to vote on a proposal. If a proposal receives more than half of the total votes in favor, it passes. If it receives more than half of the total votes against, it fails.
-  
-- **getProposal(uint _proposal)**: Returns the proposal and its votes (both in favor and against).
-  
-- **airdrop(address[] list)**: Airdrops governance tokens to a list of new members.
-  
-- **vpAirdrop(address[] list)**: Airdrops governance tokens for VPs to a list of new VPs.
+**Smart Contract:** 
 
-### Events:
+This is a special contract that manages the distribution of membership tokens, keeps track of proposals, and handles the voting on those proposals.
 
-- **NewProposal**: Emitted when a new proposal is added.
-  
-- **proposalPassed**: Emitted when a proposal passes.
-  
-- **proposalFailed**: Emitted when a proposal fails.
 
----
+**Web Interface:**
+
+This is an easy-to-use website that lets members connect their wallets, put forward ideas, and sign in for meetings.
+
+**In Practice:**
+
+Here's a glimpse into how 617DAO will enhance club involvement and support our decentralized leadership style. Imagine a typical Wednesday meeting: as members arrive, they scan a QR code displayed on the board, which directs them to the BU Blockchain's site. After connecting their Metamask wallet, they hit the check-in button and input a one-time password shown only to those present. This action communicates with our smart contract on the Polygon network, registering their attendance. John, who's been regularly attending and signing in for the past two meetings, earns a membership token on his third check-in, officially marking his club membership. Mid-meeting, our President, Isabell Ki, proposes New York as the venue for our next hackathon. Members swiftly access the website, view the proposal, and those with membership status cast their votes. Once a majority gives a thumbs up, New York it is!
+
