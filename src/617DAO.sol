@@ -10,7 +10,7 @@ contract BUBDAO {
     //Set to BUB Wallet Address
     address public owner;
 
-    mapping (address => uint) private balance;
+    mapping (address => uint) public balance;
     address private president;
     uint private totalTokens;
 
@@ -19,6 +19,7 @@ contract BUBDAO {
     uint8 constant TOTAL_MEMBER_TOKENS = 1;
 
     error Unauthorized();
+    error AlreadyMember();
     error MeetingNotOpen();
     error MeetingIsAlreadyOpen();
     error alreadyCheckedIn();
@@ -80,6 +81,7 @@ contract BUBDAO {
     constructor(address _president) {
         owner = msg.sender;
         president = _president;
+        balance[msg.sender] = TOTAL_PRESIDENT_TOKENS;
         totalTokens += TOTAL_PRESIDENT_TOKENS;
     }
 
@@ -87,15 +89,22 @@ contract BUBDAO {
 
     //@notice adds members to DAO
     function addMember(address _member) public onlyOwner {
+        if(balance[_member] != 0){
+            revert AlreadyMember();
+        }
         balance[_member] = TOTAL_MEMBER_TOKENS;
         totalTokens += TOTAL_MEMBER_TOKENS;
     }
 
     //@notice adds VP to DAO
     function addVP(address _vp) public onlyOwner {
-        require(balance[_vp] == 1);
-        balance[_vp] = TOTAL_VP_TOKENS;
-        totalTokens += TOTAL_VP_TOKENS;
+        if(balance[_vp] == 1){
+            balance[_vp] = TOTAL_VP_TOKENS;
+            totalTokens += TOTAL_VP_TOKENS;
+        }
+        else{
+            revert Unauthorized();
+        }
     }
 
     //@notice adds President to DAO and removes old president
@@ -139,7 +148,7 @@ contract BUBDAO {
     }
 
     //@notice votes on a proposal
-    function vote(uint _proposal, bool _vote) public onlyMember {
+    function vote(uint _proposal, bool _vote) public onlyMember {     
         //Adds vote
         if(_vote){
             proposals[_proposal].votesYa = ++proposals[_proposal].votesYa;
