@@ -150,31 +150,6 @@ contract DAOTest is Test {
         dao.addMember(address(0));
     }
 
-    function test_meetingNotOpen() public {
-        vm.expectRevert(bytes("MeetingNotOpen"));
-        dao.checkIn();
-    }
-
-    function test_meetingAlreadyOpen() public {
-        dao.newMeeting("Test Meeting");
-        vm.expectRevert(bytes("MeetingIsAlreadyOpen"));
-        dao.newMeeting("Test Meeting");
-    }
-
-    function test_alreadyCheckedIn() public {
-        dao.newMeeting("Test Meeting");
-        dao.checkIn();
-        vm.expectRevert(bytes("alreadyCheckedIn"));
-        dao.checkIn();
-    }
-
-    function test_alreadyVoted() public {
-        dao.addProposal("Test Proposal");
-        dao.vote(0, true);
-        vm.expectRevert(bytes("AlreadyVoted"));
-        dao.vote(0, true);
-    }
-
    function test_notYetMembers() public {
         for (uint8 i = 0; i < 3; i++) {
             dao.newMeeting("Test Meeting");

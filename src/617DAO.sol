@@ -45,7 +45,7 @@ contract BUBDAO {
 
     // State variables
     mapping (address => uint) private s_notYetMembers;
-    mapping(uint => mapping(address => bool)) private s_votes;
+    mapping(uint => mapping(address => bool)) public s_votes;
     Proposal[] public s_proposals;
     Meeting private s_currentMeeting;
     Meeting[] private s_pastMeetings;
