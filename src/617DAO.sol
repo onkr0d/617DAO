@@ -7,23 +7,29 @@ pragma solidity 0.8.20;
 
 contract BUBDAO {
     
-    //Set to BUB Wallet Address
-    address public owner;
+    // Set to BUB Wallet Address
+    address public s_owner;
+    address public s_president;
 
-    mapping (address => uint) public balance;
-    address private president;
-    uint private totalTokens;
+    // Token balances and total tokens
+    mapping (address => uint) public s_balance;
+    uint public s_totalTokens;
 
+    // Constants
     uint8 constant TOTAL_PRESIDENT_TOKENS = 3;
     uint8 constant TOTAL_VP_TOKENS = 2;
     uint8 constant TOTAL_MEMBER_TOKENS = 1;
+    uint8 constant MEETINGS_REQUIRED_TO_JOIN = 3;
 
+    // Errors
     error Unauthorized();
     error AlreadyMember();
     error MeetingNotOpen();
     error MeetingIsAlreadyOpen();
-    error alreadyCheckedIn();
-    
+    error AlreadyCheckedIn();
+    error AlreadyVoted();
+
+    // Structs
     struct Proposal {
         string proposal;
         uint votesYa;
@@ -37,70 +43,63 @@ contract BUBDAO {
         bool open;
     }
 
-    Meeting private currentMeeting;
-    Meeting[] private pastMeetings;
+    // State variables
+    mapping (address => uint) private s_notYetMembers;
+    mapping(uint => mapping(address => bool)) private s_votes;
+    Proposal[] public s_proposals;
+    Meeting private s_currentMeeting;
+    Meeting[] private s_pastMeetings;
 
-    mapping (address => uint) private notYetMembers;
-    uint8 constant MEETINGS_REQUIRED_TO_JOIN = 3;
-
-    Proposal[] public proposals;
-
+    // Events
     event NewProposal(string proposal);
-    event proposalPassed(string proposal);
-    event proposalFailed(string proposal);
-    
+    event ProposalPassed(string proposal);
+    event ProposalFailed(string proposal);
+
+    // Modifiers
     modifier onlyOwner() {
-        if(msg.sender != owner){
-            revert Unauthorized();
-        }
+        require(msg.sender == s_owner, "Unauthorized");
         _;
     }
 
     modifier onlyMember() {
-        if(balance[msg.sender] < 1){
-            revert Unauthorized();
-        }
+        require(s_balance[msg.sender] >= 1, "Unauthorized");
         _;
     }
 
     modifier onlyVP() {
-        if(balance[msg.sender] < 2){
-            revert Unauthorized();
-        }
+        require(s_balance[msg.sender] >= 2, "Unauthorized");
         _;
     }
 
     modifier onlyPresident() {
-        if(balance[msg.sender] < 3){
-            revert Unauthorized();
-        }
+        require(s_balance[msg.sender] >= 3, "Unauthorized");
         _;
     }
 
     //@notice Constructor sets the owner and president of the DAO
     constructor(address _president) {
-        owner = msg.sender;
-        president = _president;
-        balance[msg.sender] = TOTAL_PRESIDENT_TOKENS;
-        totalTokens += TOTAL_PRESIDENT_TOKENS;
+        s_owner = msg.sender;
+        s_president = _president;
+        s_balance[msg.sender] = TOTAL_PRESIDENT_TOKENS;
+        s_totalTokens += TOTAL_PRESIDENT_TOKENS;
     }
 
-    //All adding and removing members functions
+    // All adding and removing members functions
 
     //@notice adds members to DAO
     function addMember(address _member) public onlyOwner {
-        if(balance[_member] != 0){
+        if(s_balance[_member] != 0){
             revert AlreadyMember();
         }
-        balance[_member] = TOTAL_MEMBER_TOKENS;
-        totalTokens += TOTAL_MEMBER_TOKENS;
+        s_balance[_member] = TOTAL_MEMBER_TOKENS;
+        s_totalTokens += TOTAL_MEMBER_TOKENS;
     }
 
     //@notice adds VP to DAO
     function addVP(address _vp) public onlyOwner {
-        if(balance[_vp] == 1){
-            balance[_vp] = TOTAL_VP_TOKENS;
-            totalTokens += TOTAL_VP_TOKENS;
+        if(s_balance[_vp] == 1){
+            s_balance[_vp] = TOTAL_VP_TOKENS;
+            s_totalTokens += TOTAL_VP_TOKENS;
         }
         else{
             revert Unauthorized();
@@ -109,105 +108,119 @@ contract BUBDAO {
 
     //@notice adds President to DAO and removes old president
     function newPresident(address _president) public onlyPresident {
-        balance[_president] = TOTAL_PRESIDENT_TOKENS;
-        balance[president] = 0;
-        president = _president;
+        s_balance[_president] = TOTAL_PRESIDENT_TOKENS;
+        s_balance[s_president] = 0;
+        s_president = _president;
     }
 
     //@notice airdrops governance tokens to a list of new members
     function airdrop(address[] calldata list) public onlyOwner {
         for (uint i = 0; i < list.length; ++i) {
-            balance[list[i]] = 1;
+            s_balance[list[i]] = 1;
         }
     }
 
     //@notice airdrops number tokens for VP to a list of new VPs
     function vpAirdrop(address[] calldata list) public onlyOwner {
         for (uint i = 0; i < list.length; ++i) {
-            balance[list[i]] = 2;
+            s_balance[list[i]] = 2;
         }
     }
 
     //@notice removes members from DAO
     function removeMember(address _member) public onlyOwner {
-        balance[_member] = 0;
-        totalTokens -= TOTAL_MEMBER_TOKENS;
+        s_balance[_member] = 0;
+        s_totalTokens -= TOTAL_MEMBER_TOKENS;
     }
 
     function removeVP(address _vp) public onlyOwner {
-        balance[_vp] = 0;
-        totalTokens -= TOTAL_VP_TOKENS;
+        s_balance[_vp] = 0;
+        s_totalTokens -= TOTAL_VP_TOKENS;
     }
 
 
-    //Proposals and voting
+    // Proposals and voting
 
    function addProposal(string calldata _proposal) public onlyMember {
-        proposals.push(Proposal(_proposal, 0, 0));
+        s_proposals.push(Proposal(_proposal, 0, 0));
         emit NewProposal(_proposal);
     }
 
     //@notice votes on a proposal
-    function vote(uint _proposal, bool _vote) public onlyMember {     
-        //Adds vote
-        if(_vote){
-            proposals[_proposal].votesYa = ++proposals[_proposal].votesYa;
-        } else {
-            proposals[_proposal].votesNay = ++proposals[_proposal].votesNay;
+    function vote(uint _proposal, bool _vote) public onlyMember {
+        if(s_votes[_proposal][msg.sender]){
+            revert AlreadyVoted();
         }
         
-        //Checks if proposal passed
-        if (proposals[_proposal].votesYa > totalTokens / 2) {
-            emit proposalPassed(proposals[_proposal].proposal);
+        // Adds vote
+        if(_vote){
+            s_proposals[_proposal].votesYa = s_proposals[_proposal].votesYa + s_balance[msg.sender];
         }
-        else if(proposals[_proposal].votesNay > totalTokens / 2) {
-            emit proposalFailed(proposals[_proposal].proposal);
-            delete proposals[_proposal];
+        if(!_vote){
+            s_proposals[_proposal].votesNay = s_proposals[_proposal].votesNay + s_balance[msg.sender];
+        }
+
+        s_votes[_proposal][msg.sender] = true;
+        
+        // Checks if proposal passed
+        if (s_proposals[_proposal].votesYa > s_totalTokens / 2) {
+            emit ProposalPassed(s_proposals[_proposal].proposal);
+        }
+        else if(s_proposals[_proposal].votesNay > s_totalTokens / 2) {
+            emit ProposalFailed(s_proposals[_proposal].proposal);
+            // delete s_proposals[_proposal];
         }
     }
 
 
-    //Check-in functions
+    // Check-in functions
 
     function newMeeting(string calldata topic) public onlyPresident {
-        if(currentMeeting.open){
+        if(s_currentMeeting.open){
             revert MeetingIsAlreadyOpen();
         }
         
         address[] memory attendees;
-        currentMeeting = Meeting(block.timestamp, topic, attendees, true);
+        s_currentMeeting = Meeting(block.timestamp, topic, attendees, true);
     }
 
     function checkIn() public {
-        if(!currentMeeting.open){
+        if(!s_currentMeeting.open){
             revert MeetingNotOpen();
         }
         
-        //Parse through current meeting attendees to see if address has already checked in
-        if(currentMeeting.attendees.length > 0){
-            for(uint i = 0; i < currentMeeting.attendees.length; i++){
-                if(currentMeeting.attendees[i] == msg.sender){
-                    revert alreadyCheckedIn();
+        // Parse through current meeting attendees to see if address has already checked in
+        if(s_currentMeeting.attendees.length > 0){
+            for(uint i = 0; i < s_currentMeeting.attendees.length; i++){
+                if(s_currentMeeting.attendees[i] == msg.sender){
+                    revert AlreadyCheckedIn();
                 }
             }
         }
 
-        if(balance[msg.sender] < 1){
-            notYetMembers[msg.sender] += 1;
+        if(s_balance[msg.sender] < 1){
+            s_notYetMembers[msg.sender] += 1;
 
-            if(notYetMembers[msg.sender] >= MEETINGS_REQUIRED_TO_JOIN){
+            if(s_notYetMembers[msg.sender] >= MEETINGS_REQUIRED_TO_JOIN){
                 addMember(msg.sender);
-                delete notYetMembers[msg.sender];
+                delete s_notYetMembers[msg.sender];
             }
         }
 
-        currentMeeting.attendees.push(msg.sender);
+        s_currentMeeting.attendees.push(msg.sender);
     }
 
     function closeMeeting() public onlyPresident {
-        currentMeeting.open = false;
-        pastMeetings.push(currentMeeting);
+        s_currentMeeting.open = false;
+        s_pastMeetings.push(s_currentMeeting);
     }
 
+    function getPastMeetings() public view returns (Meeting[] memory) {
+        return s_pastMeetings;
+    }
+
+    function getCurrentMeetingTopic() public view returns (string memory) {
+        return s_currentMeeting.topic;
+    }
 
 }

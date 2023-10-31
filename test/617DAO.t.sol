@@ -8,56 +8,180 @@ contract DAOTest is Test {
    BUBDAO public dao;
 
    function setUp() public {
-      dao = new BUBDAO(address(dao));
+      dao = new BUBDAO(address(this));
    }
 
    function test_addMember() public {
       dao.addMember(address(0));
-      assertEq(dao.balance(address(0)), 1);
+      assertEq(dao.s_balance(address(0)), 1);
    }
 
    function test_addVP() public {
+      dao.addMember(address(0));
       dao.addVP(address(0));
-      assertEq(dao.balance(address(0)), 2);
+      assertEq(dao.s_balance(address(0)), 2);
    }
 
    function test_addProposals() public {
-      vm.prank(address(0));
+      vm.prank(address(this));
       dao.addMember(address(0));
       vm.prank(address(0));
       dao.addProposal("test");
-      (string memory proposal,,) = dao.proposals(0);
+      (string memory proposal,,) = dao.s_proposals(0);
       assertEq(proposal, "test");
    }
 
    function test_vote() public {
+      dao.addMember(address(0));
+      vm.prank(address(0));
+      dao.addProposal("test");
       vm.prank(address(0));
       dao.vote(0, true);
-      (,uint256 votesYa,) = dao.proposals(0);
+      (,uint256 votesYa,) = dao.s_proposals(0);
       assertEq(votesYa, 1);
    }
 
    function test_votePassed() public {
-    dao.addProposal("test2");
-    //bytes32 proposalId = keccak256(abi.encodePacked("test2"));
+    dao.addMember(address(0));
     vm.prank(address(0));
-    dao.vote(1, true);
-    vm.expectEmit();
+    dao.addProposal("test");
+    vm.prank(address(0));
+    dao.vote(0, true);
+    vm.prank(address(this));
+    dao.vote(0, true);
+    (,uint256 votesYa,) = dao.s_proposals(0);
+    assertGt(votesYa, dao.s_totalTokens() / 2);
    }
-   
-   /* BUBDAO public counter;
 
-    function setUp() public {
-        counter = new BUBDAO();
+   function test_voteFailed() public {
+    dao.addMember(address(0));
+    vm.prank(address(0));
+    dao.addProposal("test");
+    vm.prank(address(0));
+    dao.vote(0, false);
+    vm.prank(address(this));
+    dao.vote(0, false);
+    (,,uint256 votesNay) = dao.s_proposals(0);
+    console2.log(votesNay);
+    assertGt(votesNay, dao.s_totalTokens() / 2);
+   }
+
+   function test_newMeeting() public {
+      dao.newMeeting("test");
+      string memory topic = dao.getCurrentMeetingTopic();
+      assertEq(topic, "test");
+   }
+
+   function test_airdrop() public {
+      address[] memory addrs = new address[](2);
+      addrs[0] = address(0);
+      addrs[1] = address(1);
+      dao.airdrop(addrs);
+      assertEq(dao.s_balance(address(0)), 1);
+      assertEq(dao.s_balance(address(1)), 1);
+   }
+
+   function test_vpAirdrop() public {
+      address[] memory addrs = new address[](2);
+      addrs[0] = address(0);
+      addrs[1] = address(1);
+      dao.addMember(address(0));
+      dao.addMember(address(1));
+      dao.vpAirdrop(addrs);
+      assertEq(dao.s_balance(address(0)), 2);
+      assertEq(dao.s_balance(address(1)), 2);
+   }
+
+   function test_removeMember() public {
+      dao.addMember(address(0));
+      dao.removeMember(address(0));
+      assertEq(dao.s_balance(address(0)), 0);
+   }
+
+   function test_removeVP() public {
+      dao.addMember(address(0));
+      dao.addVP(address(0));
+      dao.removeVP(address(0));
+      assertEq(dao.s_balance(address(0)), 0);
+   }
+
+   function test_newPresident() public {
+      dao.newPresident(address(0));
+      assertEq(dao.s_balance(address(0)), 3);
+      assertEq(dao.s_balance(address(this)), 0);
+   }
+
+   function test_unauthorizedAccess_addMember() public {
+        vm.expectRevert(bytes("Unauthorized"));
+        vm.prank(address(3));
+        dao.addMember(address(0));
     }
 
-    function test_Increment() public {
-        counter.increment();
-        assertEq(counter.number(), 1);
+    function test_unauthorizedAccess_newMeeting() public {
+        vm.expectRevert(bytes("Unauthorized"));
+        vm.prank(address(2));
+        dao.newMeeting("Unauthorized Test");
     }
 
-    function testFuzz_SetNumber(uint256 x) public {
-        counter.setNumber(x);
-        assertEq(counter.number(), x);
-    }*/
+    function test_unauthorizedAccess_closeMeeting() public {
+        vm.expectRevert(bytes("Unauthorized"));
+        vm.prank(address(1));
+        dao.closeMeeting();
+    }
+
+    function test_unauthorizedAccess_removeMember() public {
+        dao.addMember(address(0));
+        vm.expectRevert(bytes("Unauthorized"));
+        vm.prank(address(0));
+        dao.removeMember(address(0));
+    }
+
+    function test_unauthorizedAccess_removeVP() public {
+        dao.addMember(address(0));
+        dao.addVP(address(0));
+        vm.expectRevert(bytes("Unauthorized"));
+        vm.prank(address(0));
+        dao.removeVP(address(0));
+    }
+
+    function test_alreadyMember() public {
+        dao.addMember(address(0));
+        vm.expectRevert(bytes("AlreadyMember"));
+        dao.addMember(address(0));
+    }
+
+    function test_meetingNotOpen() public {
+        vm.expectRevert(bytes("MeetingNotOpen"));
+        dao.checkIn();
+    }
+
+    function test_meetingAlreadyOpen() public {
+        dao.newMeeting("Test Meeting");
+        vm.expectRevert(bytes("MeetingIsAlreadyOpen"));
+        dao.newMeeting("Test Meeting");
+    }
+
+    function test_alreadyCheckedIn() public {
+        dao.newMeeting("Test Meeting");
+        dao.checkIn();
+        vm.expectRevert(bytes("alreadyCheckedIn"));
+        dao.checkIn();
+    }
+
+    function test_alreadyVoted() public {
+        dao.addProposal("Test Proposal");
+        dao.vote(0, true);
+        vm.expectRevert(bytes("AlreadyVoted"));
+        dao.vote(0, true);
+    }
+
+   function test_notYetMembers() public {
+        for (uint8 i = 0; i < 3; i++) {
+            dao.newMeeting("Test Meeting");
+            vm.prank(address(1));
+            dao.checkIn();
+            dao.closeMeeting();
+        }
+        assertEq(dao.s_balance(address(1)), 1);  // Now a member after 3 meetings
+    }
 }
