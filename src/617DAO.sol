@@ -12,13 +12,13 @@ contract BUBDAO {
     address public s_president;
 
     // Token balances and total tokens
-    mapping (address => uint) public s_balance;
+    mapping (address => uint8) public s_balance;
     uint public s_totalTokens;
 
     // Constants
-    uint8 constant TOTAL_PRESIDENT_TOKENS = 3;
-    uint8 constant TOTAL_VP_TOKENS = 2;
-    uint8 constant TOTAL_MEMBER_TOKENS = 1;
+    uint8 constant PRESIDENT_TOKENS = 3;
+    uint8 constant VP_TOKENS = 2;
+    uint8 constant MEMBER_TOKENS = 1;
     uint8 constant MEETINGS_REQUIRED_TO_JOIN = 3;
 
     // Errors
@@ -43,12 +43,21 @@ contract BUBDAO {
         bool open;
     }
 
+    struct Impeachment {
+        address newPresident;
+        uint256 startTime;
+        uint8 votes;
+    }
+
+
     // State variables
     mapping (address => uint) private s_notYetMembers;
-    mapping(uint => mapping(address => bool)) public s_votes;
+    mapping(uint => mapping(address => bool)) private s_votes;
+    mapping(address => uint) private s_openImpeachments;
     Proposal[] public s_proposals;
     Meeting private s_currentMeeting;
     Meeting[] private s_pastMeetings;
+    Impeachment[] private s_impeachments;
 
     // Events
     event NewProposal(string proposal);
@@ -57,22 +66,30 @@ contract BUBDAO {
 
     // Modifiers
     modifier onlyOwner() {
-        require(msg.sender == s_owner, "Unauthorized");
+        if(msg.sender != s_owner){
+            revert Unauthorized();
+        }
         _;
     }
 
     modifier onlyMember() {
-        require(s_balance[msg.sender] >= 1, "Unauthorized");
+        if(s_balance[msg.sender] == 0){
+            revert Unauthorized();
+        }
         _;
     }
 
     modifier onlyVP() {
-        require(s_balance[msg.sender] >= 2, "Unauthorized");
+        if(s_balance[msg.sender] < VP_TOKENS){
+            revert Unauthorized();
+        }
         _;
     }
 
     modifier onlyPresident() {
-        require(s_balance[msg.sender] >= 3, "Unauthorized");
+        if(s_balance[msg.sender] < PRESIDENT_TOKENS){
+            revert Unauthorized();
+        }
         _;
     }
 
@@ -80,8 +97,8 @@ contract BUBDAO {
     constructor(address _president, address[] memory _members) {
         s_owner = msg.sender;
         s_president = _president;
-        s_balance[msg.sender] = TOTAL_PRESIDENT_TOKENS;
-        s_totalTokens += TOTAL_PRESIDENT_TOKENS;
+        s_balance[msg.sender] = PRESIDENT_TOKENS;
+        s_totalTokens += PRESIDENT_TOKENS;
         airdrop(_members);
     }
 
@@ -92,15 +109,15 @@ contract BUBDAO {
         if(s_balance[_member] != 0){
             revert AlreadyMember();
         }
-        s_balance[_member] = TOTAL_MEMBER_TOKENS;
-        s_totalTokens += TOTAL_MEMBER_TOKENS;
+        s_balance[_member] = MEMBER_TOKENS;
+        s_totalTokens += MEMBER_TOKENS;
     }
 
     //@notice adds VP to DAO
     function addVP(address _vp) public onlyOwner {
         if(s_balance[_vp] == 1){
-            s_balance[_vp] = TOTAL_VP_TOKENS;
-            s_totalTokens += TOTAL_VP_TOKENS;
+            s_balance[_vp] = VP_TOKENS;
+            s_totalTokens += VP_TOKENS;
         }
         else{
             revert Unauthorized();
@@ -109,7 +126,7 @@ contract BUBDAO {
 
     //@notice adds President to DAO and removes old president
     function newPresident(address _president) public onlyPresident {
-        s_balance[_president] = TOTAL_PRESIDENT_TOKENS;
+        s_balance[_president] = PRESIDENT_TOKENS;
         s_balance[s_president] = 0;
         s_president = _president;
     }
@@ -131,18 +148,27 @@ contract BUBDAO {
     //@notice removes members from DAO
     function removeMember(address _member) public onlyOwner {
         s_balance[_member] = 0;
-        s_totalTokens -= TOTAL_MEMBER_TOKENS;
+        s_totalTokens -= MEMBER_TOKENS;
     }
 
     function removeVP(address _vp) public onlyOwner {
         s_balance[_vp] = 0;
-        s_totalTokens -= TOTAL_VP_TOKENS;
+        s_totalTokens -= VP_TOKENS;
     }
 
     // Democracy functions
 
     function impeach(address _newPresident) public onlyMember {
-        
+        if(s_impeachments[s_openImpeachments[_newPresident]].startTime + 7 days < block.timestamp){
+            delete s_openImpeachments[_newPresident];
+        }
+        else if(s_openImpeachments[_newPresident] != 0){
+            s_impeachments[s_openImpeachments[_newPresident]].votes += s_balance[msg.sender];
+        }
+        else{
+            s_openImpeachments[_newPresident] = s_impeachments.length;
+            s_impeachments.push(Impeachment(_newPresident, block.timestamp, s_balance[msg.sender]));
+        }
     }
 
 
