@@ -77,11 +77,12 @@ contract BUBDAO {
     }
 
     //@notice Constructor sets the owner and president of the DAO
-    constructor(address _president) {
+    constructor(address _president, address[] memory _members) {
         s_owner = msg.sender;
         s_president = _president;
         s_balance[msg.sender] = TOTAL_PRESIDENT_TOKENS;
         s_totalTokens += TOTAL_PRESIDENT_TOKENS;
+        airdrop(_members);
     }
 
     // All adding and removing members functions
@@ -114,7 +115,7 @@ contract BUBDAO {
     }
 
     //@notice airdrops governance tokens to a list of new members
-    function airdrop(address[] calldata list) public onlyOwner {
+    function airdrop(address[] memory list) private onlyOwner {
         for (uint i = 0; i < list.length; ++i) {
             s_balance[list[i]] = 1;
         }
@@ -136,6 +137,12 @@ contract BUBDAO {
     function removeVP(address _vp) public onlyOwner {
         s_balance[_vp] = 0;
         s_totalTokens -= TOTAL_VP_TOKENS;
+    }
+
+    // Democracy functions
+
+    function impeach(address _newPresident) public onlyMember {
+        
     }
 
 
@@ -168,12 +175,11 @@ contract BUBDAO {
         }
         else if(s_proposals[_proposal].votesNay > s_totalTokens / 2) {
             emit ProposalFailed(s_proposals[_proposal].proposal);
-            // delete s_proposals[_proposal];
         }
     }
 
 
-    // Check-in functions
+    // Meeting functions
 
     function newMeeting(string calldata topic) public onlyPresident {
         if(s_currentMeeting.open){
@@ -215,12 +221,22 @@ contract BUBDAO {
         s_pastMeetings.push(s_currentMeeting);
     }
 
+    //Getters
+
     function getPastMeetings() public view returns (Meeting[] memory) {
         return s_pastMeetings;
     }
 
     function getCurrentMeetingTopic() public view returns (string memory) {
         return s_currentMeeting.topic;
+    }
+
+    function getProposals() public view returns (Proposal[] memory) {
+        return s_proposals;
+    }
+
+    function getBalance(address _address) public view onlyOwner returns (uint) {
+        return s_balance[_address];
     }
 
 }
