@@ -23,6 +23,10 @@ contract BUBDAO {
 
     // Errors
     error Unauthorized();
+    error UnauthorizedOwner();
+    error UnauthorizedPresident();
+    error UnauthorizedVP();
+    error UnauthorizedMember();
     error AlreadyMember();
     error MeetingNotOpen();
     error MeetingIsAlreadyOpen();
@@ -67,28 +71,28 @@ contract BUBDAO {
     // Modifiers
     modifier onlyOwner() {
         if(msg.sender != s_owner){
-            revert Unauthorized();
+            revert UnauthorizedOwner();
         }
         _;
     }
 
     modifier onlyMember() {
         if(s_balance[msg.sender] == 0){
-            revert Unauthorized();
+            revert UnauthorizedMember();
         }
         _;
     }
 
     modifier onlyVP() {
         if(s_balance[msg.sender] < VP_TOKENS){
-            revert Unauthorized();
+            revert UnauthorizedVP();
         }
         _;
     }
 
     modifier onlyPresident() {
-        if(s_balance[msg.sender] < PRESIDENT_TOKENS){
-            revert Unauthorized();
+        if(msg.sender != s_president){
+            revert UnauthorizedPresident();
         }
         _;
     }
@@ -120,7 +124,7 @@ contract BUBDAO {
             s_totalTokens += VP_TOKENS;
         }
         else{
-            revert Unauthorized();
+            revert UnauthorizedOwner();
         }
     }
 
@@ -181,7 +185,7 @@ contract BUBDAO {
 
     //@notice votes on a proposal
     function vote(uint _proposal, bool _vote) public onlyMember {
-        if(s_votes[_proposal][msg.sender]){
+        if(s_votes[_proposal][msg.sender] == true){
             revert AlreadyVoted();
         }
         

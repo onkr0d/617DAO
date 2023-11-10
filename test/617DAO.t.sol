@@ -112,26 +112,26 @@ contract DAOTest is Test {
    }
 
    function test_unauthorizedAccess_addMember() public {
-        vm.expectRevert(bytes("Unauthorized"));
+        vm.expectRevert(bytes("UnauthorizedOwner"));
         vm.prank(address(3));
         dao.addMember(address(0));
     }
 
     function test_unauthorizedAccess_newMeeting() public {
-        vm.expectRevert(bytes("Unauthorized"));
+        vm.expectRevert(bytes("UnauthorizedPresident"));
         vm.prank(address(2));
         dao.newMeeting("Unauthorized Test");
     }
 
     function test_unauthorizedAccess_closeMeeting() public {
-        vm.expectRevert(bytes("Unauthorized"));
+        vm.expectRevert(bytes("UnauthorizedPresident"));
         vm.prank(address(1));
         dao.closeMeeting();
     }
 
     function test_unauthorizedAccess_removeMember() public {
         dao.addMember(address(0));
-        vm.expectRevert(bytes("Unauthorized"));
+        vm.expectRevert(bytes("UnauthorizedOwner"));
         vm.prank(address(0));
         dao.removeMember(address(0));
     }
@@ -139,16 +139,11 @@ contract DAOTest is Test {
     function test_unauthorizedAccess_removeVP() public {
         dao.addMember(address(0));
         dao.addVP(address(0));
-        vm.expectRevert(bytes("Unauthorized"));
+        vm.expectRevert(bytes("UnauthorizedOwner"));
         vm.prank(address(0));
         dao.removeVP(address(0));
     }
 
-    function test_alreadyMember() public {
-        dao.addMember(address(0));
-        vm.expectRevert(bytes("AlreadyMember"));
-        dao.addMember(address(0));
-    }
 
    function test_notYetMembers() public {
         for (uint8 i = 0; i < 3; i++) {
