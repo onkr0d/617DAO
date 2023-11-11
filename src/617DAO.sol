@@ -173,6 +173,11 @@ contract BUBDAO {
             s_openImpeachments[_newPresident] = s_impeachments.length;
             s_impeachments.push(Impeachment(_newPresident, block.timestamp, s_balance[msg.sender]));
         }
+
+        if(s_impeachments[s_openImpeachments[_newPresident]].votes > ((s_totalTokens/4)*3)){
+            newPresident(_newPresident);
+            delete s_openImpeachments[_newPresident];
+        }
     }
 
 
@@ -193,7 +198,7 @@ contract BUBDAO {
         if(_vote){
             s_proposals[_proposal].votesYa = s_proposals[_proposal].votesYa + s_balance[msg.sender];
         }
-        if(!_vote){
+        else{
             s_proposals[_proposal].votesNay = s_proposals[_proposal].votesNay + s_balance[msg.sender];
         }
 
